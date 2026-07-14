@@ -7,24 +7,33 @@ app = Flask(__name__)
 TOKEN = os.environ["BOT_TOKEN"]
 
 replies = {
-    "سعر": "سعر الاشتراك 100 جنيه",
-    "واتس": "01000000000",
-    "عنوان": "القاهرة"
+    "usdt": """<blockquote>Enter and click on any wallet to be copied <tg-emoji emoji-id="5332668748044204575"></tg-emoji></blockquote>
+
+<blockquote>- Binance <tg-emoji emoji-id="5420232672964275159"></tg-emoji> : (1156755586)</blockquote>
+
+<blockquote>- Bybit <tg-emoji emoji-id="5433900293987261516"></tg-emoji> : (523496990)</blockquote>
+
+<blockquote><tg-emoji emoji-id="5832251986635920010"></tg-emoji> Don't forget to take a screenshot
+of the transaction you made.</blockquote>"""
 }
 
-def send(chat_id, text, business_connection_id=None):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
-    data = {
+def send(chat_id, text, business_connection_id=None):
+    payload = {
         "chat_id": chat_id,
-        "text": text
+        "text": text,
+        "parse_mode": "HTML"
     }
 
     if business_connection_id:
-        data["business_connection_id"] = business_connection_id
+        payload["business_connection_id"] = business_connection_id
 
-    r = requests.post(url, json=data)
-    print("Telegram response:", r.text)
+    r = requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json=payload
+    )
+
+    print(r.text)
 
 
 @app.route("/")
@@ -37,20 +46,26 @@ def webhook():
     data = request.json
     print(data)
 
-    # Telegram Business
     if "business_message" in data:
+
         msg = data["business_message"]
-        text = msg.get("text", "").strip()
+
+        text = msg.get("text", "").strip().lower()
+
         chat_id = msg["chat"]["id"]
+
         business_connection_id = msg["business_connection_id"]
 
+        # ← هنا هيتضاف الشرط بعد ما نعرف الحقل اللي بيميز إن الرسالة منك
         if text in replies:
             send(chat_id, replies[text], business_connection_id)
 
-    # الرسائل العادية
     elif "message" in data:
+
         msg = data["message"]
-        text = msg.get("text", "").strip()
+
+        text = msg.get("text", "").strip().lower()
+
         chat_id = msg["chat"]["id"]
 
         if text in replies:
