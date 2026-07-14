@@ -2,6 +2,12 @@ from flask import Flask
 
 app = Flask(__name__)
 
+replies = {
+    "السلام": "وعليكم السلام",
+    "السعر": "السعر 100 جنيه",
+    "العنوان": "القاهرة"
+}
+
 @app.route("/")
 def home():
     return "Bot is running!"
