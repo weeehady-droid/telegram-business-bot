@@ -5,6 +5,7 @@ import os
 app = Flask(__name__)
 
 TOKEN = os.environ["BOT_TOKEN"]
+OWNER_ID = 5260085571
 
 replies = {
     "usdt": """<blockquote>Enter and click on any wallet to be copied <tg-emoji emoji-id="5332668748044204575"></tg-emoji></blockquote>
@@ -46,26 +47,30 @@ def webhook():
     data = request.json
     print(data)
 
+    # رسائل Telegram Business
     if "business_message" in data:
-
         msg = data["business_message"]
 
+        # يرد على رسائلك أنت فقط
+        if msg.get("from", {}).get("id") != OWNER_ID:
+            return "OK", 200
+
         text = msg.get("text", "").strip().lower()
-
         chat_id = msg["chat"]["id"]
-
         business_connection_id = msg["business_connection_id"]
 
-        # ← هنا هيتضاف الشرط بعد ما نعرف الحقل اللي بيميز إن الرسالة منك
         if text in replies:
             send(chat_id, replies[text], business_connection_id)
 
+    # الرسائل العادية
     elif "message" in data:
-
         msg = data["message"]
 
-        text = msg.get("text", "").strip().lower()
+        # يرد على رسائلك أنت فقط
+        if msg.get("from", {}).get("id") != OWNER_ID:
+            return "OK", 200
 
+        text = msg.get("text", "").strip().lower()
         chat_id = msg["chat"]["id"]
 
         if text in replies:
