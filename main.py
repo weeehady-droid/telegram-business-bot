@@ -22,8 +22,21 @@ of the transaction you made.</blockquote>"""
 def send(chat_id, text, business_connection_id=None):
     payload = {
         "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "HTML"
+        "text": "X Enter and click on any wallet to be copied\n\n- Binance : (1156755586)\n\n- Bybit : (523496990)\n\nX Don't forget to take a screenshot of the transaction you made.",
+        "entities": [
+            {
+                "offset": 0,
+                "length": 1,
+                "type": "custom_emoji",
+                "custom_emoji_id": "5332668748044204575"
+            },
+            {
+                "offset": 80,
+                "length": 1,
+                "type": "custom_emoji",
+                "custom_emoji_id": "5832251986635920010"
+            }
+        ]
     }
 
     if business_connection_id:
@@ -34,6 +47,7 @@ def send(chat_id, text, business_connection_id=None):
         json=payload
     )
 
+    print(r.status_code)
     print(r.text)
 
 
