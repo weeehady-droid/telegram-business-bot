@@ -7,23 +7,39 @@ app = Flask(__name__)
 TOKEN = os.environ["BOT_TOKEN"]
 OWNER_ID = 5260085571
 
-replies = {
-    "usdt": """<blockquote>Enter and click on any wallet to be copied <tg-emoji emoji-id="5332668748044204575"></tg-emoji></blockquote>
 
-<blockquote>- Binance <tg-emoji emoji-id="5420232672964275159"></tg-emoji> : (1156755586)</blockquote>
+def send(chat_id, business_connection_id=None):
+    text = "⭐ Enter and click on any wallet to be copied\n\n⭐ Binance : (1156755586)\n\n⭐ Bybit : (523496990)\n\n⭐ Don't forget to take a screenshot of the transaction you made."
 
-<blockquote>- Bybit <tg-emoji emoji-id="5433900293987261516"></tg-emoji> : (523496990)</blockquote>
-
-<blockquote><tg-emoji emoji-id="5832251986635920010"></tg-emoji> Don't forget to take a screenshot
-of the transaction you made.</blockquote>"""
-}
-
-
-def send(chat_id, text, business_connection_id=None):
     payload = {
         "chat_id": chat_id,
         "text": text,
-        "parse_mode": "HTML"
+        "entities": [
+            {
+                "offset": 0,
+                "length": 1,
+                "type": "custom_emoji",
+                "custom_emoji_id": "5332668748044204575"
+            },
+            {
+                "offset": 46,
+                "length": 1,
+                "type": "custom_emoji",
+                "custom_emoji_id": "5420232672964275159"
+            },
+            {
+                "offset": 71,
+                "length": 1,
+                "type": "custom_emoji",
+                "custom_emoji_id": "5433900293987261516"
+            },
+            {
+                "offset": 99,
+                "length": 1,
+                "type": "custom_emoji",
+                "custom_emoji_id": "5832251986635920010"
+            }
+        ]
     }
 
     if business_connection_id:
@@ -48,38 +64,32 @@ def home():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
-    print("========== UPDATE ==========")
     print(data)
-    print("============================")
 
-    # رسائل Telegram Business
     if "business_message" in data:
         msg = data["business_message"]
 
-        # يرد على رسائلك فقط
         if msg.get("from", {}).get("id") != OWNER_ID:
             return "OK", 200
 
         text = msg.get("text", "").strip().lower()
-        chat_id = msg["chat"]["id"]
-        business_connection_id = msg["business_connection_id"]
 
-        if text in replies:
-            send(chat_id, replies[text], business_connection_id)
+        if text == "usdt":
+            send(
+                msg["chat"]["id"],
+                msg["business_connection_id"]
+            )
 
-    # الرسائل العادية
     elif "message" in data:
         msg = data["message"]
 
-        # يرد على رسائلك فقط
         if msg.get("from", {}).get("id") != OWNER_ID:
             return "OK", 200
 
         text = msg.get("text", "").strip().lower()
-        chat_id = msg["chat"]["id"]
 
-        if text in replies:
-            send(chat_id, replies[text])
+        if text == "usdt":
+            send(msg["chat"]["id"])
 
     return "OK", 200
 
