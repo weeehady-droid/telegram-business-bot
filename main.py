@@ -74,3 +74,82 @@ def send_uid(chat_id, title, uid, business_connection_id=None):
         payload["business_connection_id"] = business_connection_id
 
     telegram("sendMessage", payload)
+
+
+@app.route("/")
+def home():
+    return "Bot is running!"
+
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+
+    data = request.json
+    print(data)
+
+    # Telegram Business Messages
+    if "business_message" in data:
+
+        msg = data["business_message"]
+
+        if msg.get("from", {}).get("id") != OWNER_ID:
+            return "OK", 200
+
+        text = msg.get("text", "").strip().lower()
+
+        if text == "usdt":
+            send_payment(
+                msg["chat"]["id"],
+                msg["business_connection_id"]
+            )
+
+    # Normal Bot Messages
+    elif "message" in data:
+
+        msg = data["message"]
+
+        if msg.get("from", {}).get("id") != OWNER_ID:
+            return "OK", 200
+
+        text = msg.get("text", "").strip().lower()
+
+        if text == "usdt":
+            send_payment(msg["chat"]["id"])
+
+    # Buttons
+    elif "callback_query" in data:
+
+        query = data["callback_query"]
+
+        chat_id = query["message"]["chat"]["id"]
+
+        business_connection_id = query["message"].get("business_connection_id")
+
+        if query["data"] == "binance":
+
+            send_uid(
+                chat_id,
+                "📋 Binance UID",
+                BINANCE_UID,
+                business_connection_id
+            )
+
+        elif query["data"] == "bybit":
+
+            send_uid(
+                chat_id,
+                "📋 Bybit UID",
+                BYBIT_UID,
+                business_connection_id
+            )
+
+        telegram(
+            "answerCallbackQuery",
+            {
+                "callback_query_id": query["id"]
+            }
+        )
+
+    return "OK", 200
+    if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
