@@ -22,6 +22,21 @@ def webhook():
 
     print(data)
 
+    message = data.get("message")
+
+    if message:
+        text = message.get("text", "")
+        chat_id = message["chat"]["id"]
+
+        if text in replies:
+            requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                json={
+                    "chat_id": chat_id,
+                    "text": replies[text]
+                }
+            )
+
     return "OK", 200
 
 if __name__ == "__main__":
