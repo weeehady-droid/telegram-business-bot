@@ -7,39 +7,40 @@ app = Flask(__name__)
 TOKEN = os.environ["BOT_TOKEN"]
 OWNER_ID = 5260085571
 
+replies = {
+    "usdt": """<blockquote><b>💳 Payment Details</b></blockquote>
 
-def send(chat_id, business_connection_id=None):
-    text = "⭐ Enter and click on any wallet to be copied\n\n⭐ Binance : (1156755586)\n\n⭐ Bybit : (523496990)\n\n⭐ Don't forget to take a screenshot of the transaction you made."
+<blockquote>🟨 <b>Binance UID</b>
+<code>1156755586</code></blockquote>
 
+<blockquote>⚫ <b>Bybit UID</b>
+<code>523496990</code></blockquote>
+
+<blockquote>📸 Please send a screenshot after completing the payment.</blockquote>"""
+}
+
+
+def send(chat_id, text, business_connection_id=None):
     payload = {
         "chat_id": chat_id,
         "text": text,
-        "entities": [
-            {
-                "offset": 0,
-                "length": 1,
-                "type": "custom_emoji",
-                "custom_emoji_id": "5332668748044204575"
-            },
-            {
-                "offset": 46,
-                "length": 1,
-                "type": "custom_emoji",
-                "custom_emoji_id": "5420232672964275159"
-            },
-            {
-                "offset": 71,
-                "length": 1,
-                "type": "custom_emoji",
-                "custom_emoji_id": "5433900293987261516"
-            },
-            {
-                "offset": 99,
-                "length": 1,
-                "type": "custom_emoji",
-                "custom_emoji_id": "5832251986635920010"
-            }
-        ]
+        "parse_mode": "HTML",
+        "reply_markup": {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "🟨 Open Binance",
+                        "url": "https://www.binance.com/"
+                    }
+                ],
+                [
+                    {
+                        "text": "⚫ Open Bybit",
+                        "url": "https://www.bybit.com/"
+                    }
+                ]
+            ]
+        }
     }
 
     if business_connection_id:
@@ -50,10 +51,8 @@ def send(chat_id, business_connection_id=None):
         json=payload
     )
 
-    print("========== SEND MESSAGE ==========")
-    print("Status Code:", r.status_code)
-    print("Response:", r.text)
-    print("==================================")
+    print("Status:", r.status_code)
+    print(r.text)
 
 
 @app.route("/")
@@ -74,9 +73,10 @@ def webhook():
 
         text = msg.get("text", "").strip().lower()
 
-        if text == "usdt":
+        if text in replies:
             send(
                 msg["chat"]["id"],
+                replies[text],
                 msg["business_connection_id"]
             )
 
@@ -88,8 +88,8 @@ def webhook():
 
         text = msg.get("text", "").strip().lower()
 
-        if text == "usdt":
-            send(msg["chat"]["id"])
+        if text in replies:
+            send(msg["chat"]["id"], replies[text])
 
     return "OK", 200
 
