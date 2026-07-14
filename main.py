@@ -34,7 +34,10 @@ def send(chat_id, text, business_connection_id=None):
         json=payload
     )
 
-    print(r.text)
+    print("========== SEND MESSAGE ==========")
+    print("Status Code:", r.status_code)
+    print("Response:", r.text)
+    print("==================================")
 
 
 @app.route("/")
@@ -45,13 +48,15 @@ def home():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
+    print("========== UPDATE ==========")
     print(data)
+    print("============================")
 
     # رسائل Telegram Business
     if "business_message" in data:
         msg = data["business_message"]
 
-        # يرد على رسائلك أنت فقط
+        # يرد على رسائلك فقط
         if msg.get("from", {}).get("id") != OWNER_ID:
             return "OK", 200
 
@@ -66,7 +71,7 @@ def webhook():
     elif "message" in data:
         msg = data["message"]
 
-        # يرد على رسائلك أنت فقط
+        # يرد على رسائلك فقط
         if msg.get("from", {}).get("id") != OWNER_ID:
             return "OK", 200
 
