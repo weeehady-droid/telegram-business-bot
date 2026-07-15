@@ -31,8 +31,15 @@ of the transaction you made.</i></b></blockquote>""",
 <blockquote><b><i>- Instapay <tg-emoji emoji-id="5895429645595055968">💸</tg-emoji> : (<code>01123512580</code>)</i></b></blockquote>
 
 <blockquote><b><i><tg-emoji emoji-id="5832251986635920010">📸</tg-emoji> Don't forget to take a screenshot
+of the transaction you made.</i></b></blockquote>""",
+
+    "bep20": """<blockquote><b><i>-bsc(Bep20) 🤑 : (<code>0x55544dffe101ce5f0992a94c049e67b09972ce7a</code>)</i></b></blockquote>
+
+<blockquote><b><i><tg-emoji emoji-id="5832251986635920010">📸</tg-emoji> Don't forget to take a screenshot
 of the transaction you made.</i></b></blockquote>"""
 }
+
+BEP20_ADDRESS = "0x55544dffe101ce5f0992a94c049e67b09972ce7a"
 
 # أزرار نسخ سريعة تظهر تحت الرسالة (اختياري لكل كلمة مفتاحية)
 keyboards = {
@@ -46,6 +53,11 @@ keyboards = {
         "inline_keyboard": [
             [{"text": "Vodafone Cash", "copy_text": {"text": "01096352480"}, "style": "danger"}],
             [{"text": "Instapay", "copy_text": {"text": "01123512580"}, "style": "primary"}]
+        ]
+    },
+    "bep20": {
+        "inline_keyboard": [
+            [{"text": "BEP20 Address", "copy_text": {"text": BEP20_ADDRESS}, "style": "primary"}]
         ]
     }
 }
@@ -105,6 +117,26 @@ def send(chat_id, text, business_connection_id=None, reply_markup=None):
 
     r = requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json=payload
+    )
+    print(r.text)
+
+
+def send_photo(chat_id, photo_url, caption=None, business_connection_id=None, reply_markup=None):
+    payload = {
+        "chat_id": chat_id,
+        "photo": photo_url
+    }
+    if caption:
+        payload["caption"] = caption
+        payload["parse_mode"] = "HTML"
+    if business_connection_id:
+        payload["business_connection_id"] = business_connection_id
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+
+    r = requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
         json=payload
     )
     print(r.text)
@@ -261,7 +293,10 @@ def webhook():
         if handle_debt_commands(raw_text, chat_id, business_connection_id):
             return "OK", 200
 
-        if text in replies:
+        if text == "bep20":
+            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={BEP20_ADDRESS}"
+            send_photo(chat_id, qr_url, replies["bep20"], business_connection_id)
+        elif text in replies:
             send(chat_id, replies[text], business_connection_id, keyboards.get(text))
 
     elif "message" in data:
@@ -290,7 +325,10 @@ def webhook():
                     send(chat_id, "\n".join(lines))
             return "OK", 200
 
-        if text in replies:
+        if text == "bep20":
+            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={BEP20_ADDRESS}"
+            send_photo(chat_id, qr_url, replies["bep20"])
+        elif text in replies:
             send(chat_id, replies[text], reply_markup=keyboards.get(text))
 
     return "OK", 200
