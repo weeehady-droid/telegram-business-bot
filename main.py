@@ -1,12 +1,10 @@
 from flask import Flask, request
 import requests
 import os
-import time
 
 app = Flask(__name__)
 TOKEN = os.environ["BOT_TOKEN"]
 OWNER_ID = 5260085571
-TYPING_DELAY_SECONDS = 2  # قد إيه يفضل شكله بيكتب قبل ما يبعت الرد
 
 replies = {
     "usdt": """<blockquote><b><i>Enter and click on any wallet to be copied <tg-emoji emoji-id="5332668748044204575">👆</tg-emoji></i></b></blockquote>
@@ -30,27 +28,19 @@ of the transaction you made.</i></b></blockquote>"""
 
 # أزرار نسخ سريعة تظهر تحت الرسالة (اختياري لكل كلمة مفتاحية)
 keyboards = {
+    "usdt": {
+        "inline_keyboard": [
+            [{"text": "🟡", "copy_text": {"text": "1156755586"}, "style": "primary"}],
+            [{"text": "🟠", "copy_text": {"text": "523496990"}, "style": "primary"}]
+        ]
+    },
     "كاش": {
         "inline_keyboard": [
-            [{"text": "Vodafone Cash", "copy_text": {"text": "01096352480"}, "icon_custom_emoji_id": "5836910638877643137", "style": "danger"}],
-            [{"text": "Instapay", "copy_text": {"text": "01123512580"}, "icon_custom_emoji_id": "5895429645595055968", "style": "primary"}]
+            [{"text": "Vodafone Cash", "copy_text": {"text": "01096352480"}, "style": "danger"}],
+            [{"text": "Instapay", "copy_text": {"text": "01123512580"}, "style": "primary"}]
         ]
     }
 }
-
-
-def send_typing(chat_id, business_connection_id=None):
-    payload = {
-        "chat_id": chat_id,
-        "action": "typing"
-    }
-    if business_connection_id:
-        payload["business_connection_id"] = business_connection_id
-
-    requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendChatAction",
-        json=payload
-    )
 
 
 def send(chat_id, text, business_connection_id=None, reply_markup=None):
