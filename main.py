@@ -157,22 +157,37 @@ def handle_debt_commands(text, chat_id, business_connection_id=None):
         send(chat_id, debt_message_usd(entry["amount_usd"]), business_connection_id, keyboards.get("usdt"))
         return True
 
-    # اتسدد
-    if text == "اتسدد":
+    # اتسدد / تصفير -> يصفر كل حاجة ويقول كان عليه كام
+    if text in ("اتسدد", "تصفير"):
         with debts_lock:
+            info = debts.get(chat_key)
+            egp = info.get("amount_egp", 0) if info else 0
+            usd = info.get("amount_usd", 0) if info else 0
             if chat_key in debts:
                 del debts[chat_key]
                 save_debts()
+
+        parts = []
+        if egp > 0:
+            parts.append(f"{egp} جنيه")
+        if usd > 0:
+            parts.append(f"{usd}$")
+        amounts_text = " و ".join(parts) if parts else "0"
+        send(chat_id, f"<blockquote><b><i>✅ اتصفر. كان عليك {amounts_text}</i></b></blockquote>", business_connection_id)
         return True
 
-    # payment clear -> يصفر الدولار بس
+    # payment clear -> يصفر الدولار بس ويقول كان عليه كام
     if text.lower() == "payment clear":
         with debts_lock:
+            info = debts.get(chat_key)
+            usd = info.get("amount_usd", 0) if info else 0
             if chat_key in debts:
                 debts[chat_key]["amount_usd"] = 0
                 if debts[chat_key].get("amount_egp", 0) <= 0:
                     del debts[chat_key]
                 save_debts()
+
+        send(chat_id, f"<blockquote><b><i>✅ Payment cleared. You had {usd}$ pending</i></b></blockquote>", business_connection_id)
         return True
 
     # كل <رقم> يوم
