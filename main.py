@@ -33,10 +33,13 @@ of the transaction you made.</i></b></blockquote>""",
 <blockquote><b><i><tg-emoji emoji-id="5832251986635920010">📸</tg-emoji> Don't forget to take a screenshot
 of the transaction you made.</i></b></blockquote>""",
 
-    "bep20": """<blockquote><b><i>-bsc(Bep20) 🤑 : (<code>0x55544dffe101ce5f0992a94c049e67b09972ce7a</code>)</i></b></blockquote>
+    "bep20": """
 
-<blockquote><b><i><tg-emoji emoji-id="5832251986635920010">📸</tg-emoji> Don't forget to take a screenshot
-of the transaction you made.</i></b></blockquote>"""
+
+<blockquote><b>-bsc(Bep20) 🤑 : (<code>0x55544dffe101ce5f0992a94c049e67b09972ce7a</code>)</b></blockquote>
+
+<blockquote><b><tg-emoji emoji-id="5832251986635920010">📸</tg-emoji> Don't forget to take a screenshot
+of the transaction you made.</b></blockquote>"""
 }
 
 BEP20_ADDRESS = "0x55544dffe101ce5f0992a94c049e67b09972ce7a"
@@ -294,7 +297,7 @@ def webhook():
             return "OK", 200
 
         if text == "bep20":
-            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={BEP20_ADDRESS}"
+            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=20&ecc=M&data={BEP20_ADDRESS}"
             send_photo(chat_id, qr_url, replies["bep20"], business_connection_id)
         elif text in replies:
             send(chat_id, replies[text], business_connection_id, keyboards.get(text))
@@ -326,7 +329,7 @@ def webhook():
             return "OK", 200
 
         if text == "bep20":
-            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={BEP20_ADDRESS}"
+            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=20&ecc=M&data={BEP20_ADDRESS}"
             send_photo(chat_id, qr_url, replies["bep20"])
         elif text in replies:
             send(chat_id, replies[text], reply_markup=keyboards.get(text))
