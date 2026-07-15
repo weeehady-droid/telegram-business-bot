@@ -56,14 +56,16 @@ keyboards = {
 def debt_message_egp(amount):
     return (
         f"<blockquote><b><i>⏰ تذكير: عليك {amount} جنيه</i></b></blockquote>\n\n"
-        f"<blockquote><b><i>برجاء السداد في أقرب وقت 🙏</i></b></blockquote>"
+        f"<blockquote><b><i>برجاء السداد في أقرب وقت 🙏</i></b></blockquote>\n\n"
+        f"<blockquote><i>ملحوظة: ده بوت تذكير تلقائي، وهيتم إرسال الرسالة دي تلقائيًا كل 24 ساعة لحد ما يتم السداد.</i></blockquote>"
     )
 
 
 def debt_message_usd(amount):
     return (
         f"<blockquote><b><i>⏰ Reminder: You have a pending payment of {amount}$</i></b></blockquote>\n\n"
-        f"<blockquote><b><i>Please settle it as soon as possible 🙏</i></b></blockquote>"
+        f"<blockquote><b><i>Please settle it as soon as possible 🙏</i></b></blockquote>\n\n"
+        f"<blockquote><i>Note: This is an automated reminder bot, and this message will be sent automatically every 24 hours until payment is settled.</i></blockquote>"
     )
 
 
