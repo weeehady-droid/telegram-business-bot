@@ -1,10 +1,18 @@
 from flask import Flask, request
 import requests
 import os
+import re
+import json
+import time
+import threading
 
 app = Flask(__name__)
 TOKEN = os.environ["BOT_TOKEN"]
 OWNER_ID = 5260085571
+
+DEBTS_FILE = "debts.json"
+DEFAULT_INTERVAL_DAYS = 1
+REMINDER_CHECK_SECONDS = 600  # يفحص كل 10 دقايق لو في تذكير مستحق
 
 replies = {
     "usdt": """<blockquote><b><i>Enter and click on any wallet to be copied <tg-emoji emoji-id="5332668748044204575">👆</tg-emoji></i></b></blockquote>
@@ -43,6 +51,29 @@ keyboards = {
 }
 
 
+# ---------- تخزين الديون ----------
+
+def load_debts():
+    if os.path.exists(DEBTS_FILE):
+        try:
+            with open(DEBTS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_debts():
+    with open(DEBTS_FILE, "w", encoding="utf-8") as f:
+        json.dump(debts, f, ensure_ascii=False, indent=2)
+
+
+debts = load_debts()
+debts_lock = threading.Lock()
+
+
+# ---------- إرسال الرسائل ----------
+
 def send(chat_id, text, business_connection_id=None, reply_markup=None):
     payload = {
         "chat_id": chat_id,
@@ -61,6 +92,124 @@ def send(chat_id, text, business_connection_id=None, reply_markup=None):
     print(r.text)
 
 
+# ---------- أوامر تتبع الديون (بتتكتب جوه محادثة الشخص نفسه) ----------
+
+def handle_debt_commands(text, chat_id, business_connection_id=None):
+    chat_key = str(chat_id)
+
+    # عليك <مبلغ>  -> جنيه (كاش)
+    m = re.match(r'^عليك\s+(\d+(?:\.\d+)?)$', text)
+    if m:
+        amount = float(m.group(1))
+        with debts_lock:
+            entry = debts.get(chat_key, {
+                "amount_egp": 0,
+                "amount_usd": 0,
+                "interval_days": DEFAULT_INTERVAL_DAYS,
+                "last_reminder": time.time()
+            })
+            entry["amount_egp"] = entry.get("amount_egp", 0) + amount
+            entry["business_connection_id"] = business_connection_id
+            entry.setdefault("interval_days", DEFAULT_INTERVAL_DAYS)
+            entry.setdefault("last_reminder", time.time())
+            debts[chat_key] = entry
+            save_debts()
+
+        send(chat_id, replies["كاش"], business_connection_id, keyboards.get("كاش"))
+        return True
+
+    # payment <مبلغ>  -> دولار (usdt)
+    m = re.match(r'^payment\s+(\d+(?:\.\d+)?)$', text, re.IGNORECASE)
+    if m:
+        amount = float(m.group(1))
+        with debts_lock:
+            entry = debts.get(chat_key, {
+                "amount_egp": 0,
+                "amount_usd": 0,
+                "interval_days": DEFAULT_INTERVAL_DAYS,
+                "last_reminder": time.time()
+            })
+            entry["amount_usd"] = entry.get("amount_usd", 0) + amount
+            entry["business_connection_id"] = business_connection_id
+            entry.setdefault("interval_days", DEFAULT_INTERVAL_DAYS)
+            entry.setdefault("last_reminder", time.time())
+            debts[chat_key] = entry
+            save_debts()
+
+        send(chat_id, replies["usdt"], business_connection_id, keyboards.get("usdt"))
+        return True
+
+    # اتسدد
+    if text == "اتسدد":
+        with debts_lock:
+            if chat_key in debts:
+                del debts[chat_key]
+                save_debts()
+        return True
+
+    # payment clear -> يصفر الدولار بس
+    if text.lower() == "payment clear":
+        with debts_lock:
+            if chat_key in debts:
+                debts[chat_key]["amount_usd"] = 0
+                if debts[chat_key].get("amount_egp", 0) <= 0:
+                    del debts[chat_key]
+                save_debts()
+        return True
+
+    # كل <رقم> يوم
+    m2 = re.match(r'^كل\s+(\d+)\s+يوم$', text)
+    if m2:
+        days = int(m2.group(1))
+        with debts_lock:
+            entry = debts.get(chat_key, {"amount": 0, "last_reminder": time.time()})
+            entry["interval_days"] = days
+            entry["business_connection_id"] = business_connection_id
+            debts[chat_key] = entry
+            save_debts()
+        return True
+
+    return False
+
+
+# ---------- خيط خلفي بيبعت التذكيرات ----------
+
+def reminder_loop():
+    while True:
+        now = time.time()
+        with debts_lock:
+            changed = False
+            for chat_key, info in list(debts.items()):
+                egp = info.get("amount_egp", 0)
+                usd = info.get("amount_usd", 0)
+                if egp <= 0 and usd <= 0:
+                    continue
+                interval_seconds = info.get("interval_days", DEFAULT_INTERVAL_DAYS) * 86400
+                last = info.get("last_reminder", 0)
+                if now - last >= interval_seconds:
+                    parts = []
+                    if egp > 0:
+                        parts.append(f"<code>{egp}</code> ج")
+                    if usd > 0:
+                        parts.append(f"<code>{usd}</code>$")
+                    amounts_text = " و ".join(parts)
+                    message = (
+                        f"<blockquote><b><i>⏰ تذكير: عليك {amounts_text}</i></b></blockquote>"
+                    )
+                    try:
+                        send(int(chat_key), message, info.get("business_connection_id"))
+                    except Exception as e:
+                        print("reminder send error:", e)
+                    info["last_reminder"] = now
+                    changed = True
+            if changed:
+                save_debts()
+        time.sleep(REMINDER_CHECK_SECONDS)
+
+
+threading.Thread(target=reminder_loop, daemon=True).start()
+
+
 @app.route("/")
 def home():
     return "Bot is running!"
@@ -73,25 +222,46 @@ def webhook():
 
     if "business_message" in data:
         msg = data["business_message"]
-        # يرد على رسائلك أنت فقط
         if msg.get("from", {}).get("id") != OWNER_ID:
             return "OK", 200
 
-        text = msg.get("text", "").strip().lower()
+        raw_text = msg.get("text", "").strip()
+        text = raw_text.lower()
         chat_id = msg["chat"]["id"]
         business_connection_id = msg["business_connection_id"]
+
+        # أوامر الديون (عليك بترد برسالة الدفع المناسبة، اتسدد بصمت)
+        if handle_debt_commands(raw_text, chat_id, business_connection_id):
+            return "OK", 200
 
         if text in replies:
             send(chat_id, replies[text], business_connection_id, keyboards.get(text))
 
     elif "message" in data:
         msg = data["message"]
-        # يرد على رسائلك أنت فقط
         if msg.get("from", {}).get("id") != OWNER_ID:
             return "OK", 200
 
-        text = msg.get("text", "").strip().lower()
+        raw_text = msg.get("text", "").strip()
+        text = raw_text.lower()
         chat_id = msg["chat"]["id"]
+
+        # قائمة الديون - بس في المحادثة الخاصة بينك وبين البوت
+        if raw_text == "الديون":
+            with debts_lock:
+                if not debts:
+                    send(chat_id, "مفيش حد عليه فلوس دلوقتي ✅")
+                else:
+                    lines = ["<b>الديون الحالية:</b>"]
+                    for chat_key, info in debts.items():
+                        egp = info.get("amount_egp", 0)
+                        usd = info.get("amount_usd", 0)
+                        lines.append(
+                            f"- Chat {chat_key} : {egp} ج / {usd}$ "
+                            f"(كل {info.get('interval_days', DEFAULT_INTERVAL_DAYS)} يوم)"
+                        )
+                    send(chat_id, "\n".join(lines))
+            return "OK", 200
 
         if text in replies:
             send(chat_id, replies[text], reply_markup=keyboards.get(text))
