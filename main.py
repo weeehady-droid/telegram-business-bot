@@ -18,9 +18,9 @@ of the transaction you made.</blockquote>""",
 
     "كاش": """<blockquote>Enter and click on any wallet to be copied <tg-emoji emoji-id="5332668748044204575">👛</tg-emoji></blockquote>
 
-<blockquote>- Vodafone Cash 🔴 : <code>01096352480</code></blockquote>
+<blockquote>- Vodafone Cash <tg-emoji emoji-id="5836910638877643137">🔴</tg-emoji> : <code>01096352480</code></blockquote>
 
-<blockquote>- Instapay 💸 : <code>01123512580</code></blockquote>
+<blockquote>- Instapay <tg-emoji emoji-id="5895429645595055968">💸</tg-emoji> : <code>01123512580</code></blockquote>
 
 <blockquote><tg-emoji emoji-id="5832251986635920010">📸</tg-emoji> Don't forget to take a screenshot
 of the transaction you made.</blockquote>"""
