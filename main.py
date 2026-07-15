@@ -51,6 +51,22 @@ keyboards = {
 }
 
 
+# رسائل مخصصة لموضوع الدين بس (منفصلة عن ردود usdt / كاش الأصلية)
+
+def debt_message_egp(amount):
+    return (
+        f"<blockquote><b><i>⏰ تذكير: عليك {amount} جنيه</i></b></blockquote>\n\n"
+        f"<blockquote><b><i>برجاء السداد في أقرب وقت 🙏</i></b></blockquote>"
+    )
+
+
+def debt_message_usd(amount):
+    return (
+        f"<blockquote><b><i>⏰ Reminder: You have a pending payment of {amount}$</i></b></blockquote>\n\n"
+        f"<blockquote><b><i>Please settle it as soon as possible 🙏</i></b></blockquote>"
+    )
+
+
 # ---------- تخزين الديون ----------
 
 def load_debts():
@@ -115,7 +131,7 @@ def handle_debt_commands(text, chat_id, business_connection_id=None):
             debts[chat_key] = entry
             save_debts()
 
-        send(chat_id, replies["كاش"], business_connection_id, keyboards.get("كاش"))
+        send(chat_id, debt_message_egp(entry["amount_egp"]), business_connection_id, keyboards.get("كاش"))
         return True
 
     # payment <مبلغ>  -> دولار (usdt)
@@ -136,7 +152,7 @@ def handle_debt_commands(text, chat_id, business_connection_id=None):
             debts[chat_key] = entry
             save_debts()
 
-        send(chat_id, replies["usdt"], business_connection_id, keyboards.get("usdt"))
+        send(chat_id, debt_message_usd(entry["amount_usd"]), business_connection_id, keyboards.get("usdt"))
         return True
 
     # اتسدد
@@ -187,17 +203,11 @@ def reminder_loop():
                 interval_seconds = info.get("interval_days", DEFAULT_INTERVAL_DAYS) * 86400
                 last = info.get("last_reminder", 0)
                 if now - last >= interval_seconds:
-                    parts = []
-                    if egp > 0:
-                        parts.append(f"<code>{egp}</code> ج")
-                    if usd > 0:
-                        parts.append(f"<code>{usd}</code>$")
-                    amounts_text = " و ".join(parts)
-                    message = (
-                        f"<blockquote><b><i>⏰ تذكير: عليك {amounts_text}</i></b></blockquote>"
-                    )
                     try:
-                        send(int(chat_key), message, info.get("business_connection_id"))
+                        if egp > 0:
+                            send(int(chat_key), debt_message_egp(egp), info.get("business_connection_id"), keyboards.get("كاش"))
+                        if usd > 0:
+                            send(int(chat_key), debt_message_usd(usd), info.get("business_connection_id"), keyboards.get("usdt"))
                     except Exception as e:
                         print("reminder send error:", e)
                     info["last_reminder"] = now
