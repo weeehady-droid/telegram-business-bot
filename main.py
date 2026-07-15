@@ -32,8 +32,8 @@ of the transaction you made.</i></b></blockquote>"""
 keyboards = {
     "كاش": {
         "inline_keyboard": [
-            [{"text": "Vodafone Cash", "copy_text": {"text": "01096352480"}, "icon_custom_emoji_id": "5836910638877643137"}],
-            [{"text": "Instapay", "copy_text": {"text": "01123512580"}, "icon_custom_emoji_id": "5895429645595055968"}]
+            [{"text": "Vodafone Cash", "copy_text": {"text": "01096352480"}, "icon_custom_emoji_id": "5836910638877643137", "style": "danger"}],
+            [{"text": "Instapay", "copy_text": {"text": "01123512580"}, "icon_custom_emoji_id": "5895429645595055968", "style": "primary"}]
         ]
     }
 }
@@ -54,10 +54,6 @@ def send_typing(chat_id, business_connection_id=None):
 
 
 def send(chat_id, text, business_connection_id=None, reply_markup=None):
-    # يظهر "بيكتب..." الأول قبل ما يبعت الرد
-    send_typing(chat_id, business_connection_id)
-    time.sleep(TYPING_DELAY_SECONDS)
-
     payload = {
         "chat_id": chat_id,
         "text": text,
