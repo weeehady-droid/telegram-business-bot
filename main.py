@@ -9,9 +9,18 @@ OWNER_ID = 5260085571
 replies = {
     "usdt": """<blockquote>Enter and click on any wallet to be copied <tg-emoji emoji-id="5332668748044204575">👆</tg-emoji></blockquote>
 
-<blockquote>- Binance <tg-emoji emoji-id="5420232672964275159">🟡</tg-emoji> : (1156755586)</blockquote>
+<blockquote>- Binance <tg-emoji emoji-id="5420232672964275159">🟡</tg-emoji> : <code>1156755586</code></blockquote>
 
-<blockquote>- Bybit <tg-emoji emoji-id="5433900293987261516">🟠</tg-emoji> : (523496990)</blockquote>
+<blockquote>- Bybit <tg-emoji emoji-id="5433900293987261516">🟠</tg-emoji> : <code>523496990</code></blockquote>
+
+<blockquote><tg-emoji emoji-id="5832251986635920010">📸</tg-emoji> Don't forget to take a screenshot
+of the transaction you made.</blockquote>""",
+
+    "كاش": """<blockquote>Enter and click on any wallet to be copied <tg-emoji emoji-id="5332668748044204575">👛</tg-emoji></blockquote>
+
+<blockquote>- Vodafone Cash 🔴 : <code>01096352480</code></blockquote>
+
+<blockquote>- Instapay 💸 : <code>01123512580</code></blockquote>
 
 <blockquote><tg-emoji emoji-id="5832251986635920010">📸</tg-emoji> Don't forget to take a screenshot
 of the transaction you made.</blockquote>"""
