@@ -48,8 +48,8 @@ BEP20_ADDRESS = "0x55544dffe101ce5f0992a94c049e67b09972ce7a"
 keyboards = {
     "usdt": {
         "inline_keyboard": [
-            [{"text": "Binance", "copy_text": {"text": "1156755586"}, "style": "danger"}],
-            [{"text": "Bybit", "copy_text": {"text": "523496990"}, "style": "success"}]
+            [{"text": "Binance", "copy_text": {"text": "1156755586"}, "icon_custom_emoji_id": "5420232672964275159", "style": "danger"}],
+            [{"text": "Bybit", "copy_text": {"text": "523496990"}, "icon_custom_emoji_id": "5433900293987261516", "style": "success"}]
         ]
     },
     "كاش": {
@@ -153,9 +153,9 @@ def handle_transfer_code_command(text, chat_id, business_connection_id=None):
     )
     keyboard = {
         "inline_keyboard": [
-            [{"text": "كود فودافون", "copy_text": {"text": vodafone_code}, "style": "danger"}],
-            [{"text": "كود اورنج", "copy_text": {"text": orange_code}, "style": "primary"}],
-            [{"text": "كود اتصالات", "copy_text": {"text": etisalat_code}, "style": "success"}]
+            [{"text": "كود فودافون", "copy_text": {"text": vodafone_code}, "icon_custom_emoji_id": "5891157488870366641", "style": "danger"}],
+            [{"text": "كود اورنج", "copy_text": {"text": orange_code}, "icon_custom_emoji_id": "5891167766727106816", "style": "primary"}],
+            [{"text": "كود اتصالات", "copy_text": {"text": etisalat_code}, "icon_custom_emoji_id": "5888597529448160574", "style": "success"}]
         ]
     }
     send(chat_id, message, business_connection_id, keyboard)
