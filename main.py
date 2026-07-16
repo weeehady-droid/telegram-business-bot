@@ -142,16 +142,20 @@ def handle_transfer_code_command(text, chat_id, business_connection_id=None):
     if not network:
         return False
 
-    code = network["code"](number, amount)
+    vodafone_code = NETWORKS["010"]["code"](number, amount)
+    etisalat_code = NETWORKS["011"]["code"](number, amount)
+    orange_code = NETWORKS["012"]["code"](number, amount)
 
     message = (
-        f"<blockquote><b>{number}</b></blockquote>\n\n"
-        f"<blockquote><b>{amount}</b></blockquote>\n\n"
-        f"<blockquote><b>{network['name']}</b></blockquote>"
+        f"<blockquote><b>📞 الرقم: {number}</b></blockquote>\n\n"
+        f"<blockquote><b>🌐 الشبكة: {network['name']}</b></blockquote>\n\n"
+        f"<blockquote><b>💰 المبلغ: {amount} جنيه مصري</b></blockquote>"
     )
     keyboard = {
         "inline_keyboard": [
-            [{"text": network["button"], "copy_text": {"text": code}, "style": network["style"]}]
+            [{"text": "كود فودافون", "copy_text": {"text": vodafone_code}, "style": "danger"}],
+            [{"text": "كود اورنج", "copy_text": {"text": orange_code}, "style": "primary"}],
+            [{"text": "كود اتصالات", "copy_text": {"text": etisalat_code}, "style": "success"}]
         ]
     }
     send(chat_id, message, business_connection_id, keyboard)
