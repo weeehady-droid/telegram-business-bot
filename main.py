@@ -107,6 +107,28 @@ debts_lock = threading.Lock()
 
 # ---------- كود تحويل الرصيد (فودافون / اورنج / اتصالات) ----------
 
+NETWORKS = {
+    "010": {
+        "name": "فودافون",
+        "button": "كود فودافون",
+        "style": "danger",
+        "code": lambda number, amount: f"*9*7*{number}*{amount}#"
+    },
+    "011": {
+        "name": "اتصالات",
+        "button": "كود اتصالات",
+        "style": "success",
+        "code": lambda number, amount: f"*777*1*{number}*{amount}#"
+    },
+    "012": {
+        "name": "اورنج",
+        "button": "كود اورنج",
+        "style": "primary",
+        "code": lambda number, amount: f"#7115*1*1*1*{number}*{amount}#"
+    }
+}
+
+
 def handle_transfer_code_command(text, chat_id, business_connection_id=None):
     m = re.match(r'^(01\d{9})\s+(\d+(?:\.\d+)?)$', text)
     if not m:
@@ -114,17 +136,22 @@ def handle_transfer_code_command(text, chat_id, business_connection_id=None):
 
     number = m.group(1)
     amount = m.group(2)
+    prefix = number[:3]
 
-    vodafone_code = f"*9*7*{number}*{amount}#"
-    orange_code = f"#7115*1*1*1*{number}*{amount}#"
-    etisalat_code = f"*777*1*{number}*{amount}#"
+    network = NETWORKS.get(prefix)
+    if not network:
+        return False
 
-    message = f"<blockquote><b>تحويل لـ <code>{number}</code> بمبلغ <code>{amount}</code> جنيه</b></blockquote>"
+    code = network["code"](number, amount)
+
+    message = (
+        f"<blockquote><b>{number}</b></blockquote>\n\n"
+        f"<blockquote><b>{amount}</b></blockquote>\n\n"
+        f"<blockquote><b>{network['name']}</b></blockquote>"
+    )
     keyboard = {
         "inline_keyboard": [
-            [{"text": "كود فودافون", "copy_text": {"text": vodafone_code}, "style": "danger"}],
-            [{"text": "كود اورنج", "copy_text": {"text": orange_code}, "style": "primary"}],
-            [{"text": "كود اتصالات", "copy_text": {"text": etisalat_code}, "style": "success"}]
+            [{"text": network["button"], "copy_text": {"text": code}, "style": network["style"]}]
         ]
     }
     send(chat_id, message, business_connection_id, keyboard)
