@@ -105,6 +105,32 @@ debts = load_debts()
 debts_lock = threading.Lock()
 
 
+# ---------- كود تحويل الرصيد (فودافون / اورنج / اتصالات) ----------
+
+def handle_transfer_code_command(text, chat_id, business_connection_id=None):
+    m = re.match(r'^(01\d{9})\s+(\d+(?:\.\d+)?)$', text)
+    if not m:
+        return False
+
+    number = m.group(1)
+    amount = m.group(2)
+
+    vodafone_code = f"*9*7*{number}*{amount}#"
+    orange_code = f"#7115*1*1*1*{number}*{amount}#"
+    etisalat_code = f"*777*1*{number}*{amount}#"
+
+    message = f"<blockquote><b>تحويل لـ <code>{number}</code> بمبلغ <code>{amount}</code> جنيه</b></blockquote>"
+    keyboard = {
+        "inline_keyboard": [
+            [{"text": "كود فودافون", "copy_text": {"text": vodafone_code}, "style": "danger"}],
+            [{"text": "كود اورنج", "copy_text": {"text": orange_code}, "style": "primary"}],
+            [{"text": "كود اتصالات", "copy_text": {"text": etisalat_code}, "style": "success"}]
+        ]
+    }
+    send(chat_id, message, business_connection_id, keyboard)
+    return True
+
+
 # ---------- إرسال الرسائل ----------
 
 def send(chat_id, text, business_connection_id=None, reply_markup=None):
@@ -296,6 +322,10 @@ def webhook():
         if handle_debt_commands(raw_text, chat_id, business_connection_id):
             return "OK", 200
 
+        # كود تحويل الرصيد: رقم موبايل + مبلغ
+        if handle_transfer_code_command(raw_text, chat_id, business_connection_id):
+            return "OK", 200
+
         if text == "bep20":
             qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=20&ecc=M&data={BEP20_ADDRESS}"
             send_photo(chat_id, qr_url, replies["bep20"], business_connection_id)
@@ -326,6 +356,10 @@ def webhook():
                             f"(كل {info.get('interval_days', DEFAULT_INTERVAL_DAYS)} يوم)"
                         )
                     send(chat_id, "\n".join(lines))
+            return "OK", 200
+
+        # كود تحويل الرصيد: رقم موبايل + مبلغ
+        if handle_transfer_code_command(raw_text, chat_id):
             return "OK", 200
 
         if text == "bep20":
