@@ -48,8 +48,8 @@ BEP20_ADDRESS = "0x55544dffe101ce5f0992a94c049e67b09972ce7a"
 keyboards = {
     "usdt": {
         "inline_keyboard": [
-            [{"text": "Binance", "copy_text": {"text": "1156755586"}, "icon_custom_emoji_id": "5420232672964275159", "style": "danger"}],
-            [{"text": "Bybit", "copy_text": {"text": "523496990"}, "icon_custom_emoji_id": "5433900293987261516", "style": "success"}]
+            [{"text": "Binance", "copy_text": {"text": "1156755586"}, "style": "danger"}],
+            [{"text": "Bybit", "copy_text": {"text": "523496990"}, "style": "success"}]
         ]
     },
     "كاش": {
