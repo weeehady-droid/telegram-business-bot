@@ -106,6 +106,55 @@ debts = load_debts()
 debts_lock = threading.Lock()
 
 
+# ---------- تخزين الرصيد المنفصل (+/-) بعيد تمامًا عن نظام الديون ----------
+
+BALANCES_FILE = "balances.json"
+
+
+def load_balances():
+    if os.path.exists(BALANCES_FILE):
+        try:
+            with open(BALANCES_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_balances():
+    with open(BALANCES_FILE, "w", encoding="utf-8") as f:
+        json.dump(balances, f, ensure_ascii=False, indent=2)
+
+
+balances = load_balances()
+balances_lock = threading.Lock()
+
+
+def handle_balance_adjustment_command(text, chat_id, business_connection_id=None):
+    m = re.match(r'^([+-])(\d+(?:\.\d+)?)$', text.strip())
+    if m:
+        sign = m.group(1)
+        amount = float(m.group(2))
+    else:
+        m = re.match(r'^(\d+(?:\.\d+)?)([+-])$', text.strip())
+        if not m:
+            return False
+        amount = float(m.group(1))
+        sign = m.group(2)
+
+    chat_key = str(chat_id)
+
+    with balances_lock:
+        current = balances.get(chat_key, 0)
+        current = current + amount if sign == "+" else current - amount
+        balances[chat_key] = current
+        save_balances()
+
+    message = f"<blockquote><b>💵 الرصيد الحالي: {current}$</b></blockquote>"
+    send(chat_id, message, business_connection_id)
+    return True
+
+
 # ---------- كود تحويل الرصيد (فودافون / اورنج / اتصالات) ----------
 
 NETWORKS = {
@@ -130,28 +179,17 @@ NETWORKS = {
 }
 
 
-# ---------- استعلام الرصيد جوه محادثة العميل نفسه ----------
+# ---------- استعلام الرصيد الجديد (+/-) جوه محادثة العميل نفسه ----------
 
 def handle_balance_command(text, chat_id, business_connection_id=None):
     if text.strip().lower() != "balance":
         return False
 
     chat_key = str(chat_id)
-    with debts_lock:
-        info = debts.get(chat_key)
-        egp = info.get("amount_egp", 0) if info else 0
-        usd = info.get("amount_usd", 0) if info else 0
+    with balances_lock:
+        current = balances.get(chat_key, 0)
 
-    if egp <= 0 and usd <= 0:
-        message = "<blockquote><b>✅ مفيش أي مبلغ عليك دلوقتي</b></blockquote>"
-    else:
-        parts = []
-        if egp > 0:
-            parts.append(f"<blockquote><b>{egp} جنيه</b></blockquote>")
-        if usd > 0:
-            parts.append(f"<blockquote><b>{usd}$</b></blockquote>")
-        message = "\n\n".join(parts)
-
+    message = f"<blockquote><b>💵 الرصيد الحالي: {current}$</b></blockquote>"
     send(chat_id, message, business_connection_id)
     return True
 
@@ -399,6 +437,10 @@ def webhook():
         if handle_balance_command(raw_text, chat_id, business_connection_id):
             return "OK", 200
 
+        # تعديل الرصيد المنفصل (+15 / -15)
+        if handle_balance_adjustment_command(raw_text, chat_id, business_connection_id):
+            return "OK", 200
+
         # كود تحويل الرصيد: رقم موبايل + مبلغ
         if handle_transfer_code_command(raw_text, chat_id, business_connection_id):
             return "OK", 200
@@ -437,6 +479,10 @@ def webhook():
 
         # استعلام الرصيد
         if handle_balance_command(raw_text, chat_id):
+            return "OK", 200
+
+        # تعديل الرصيد المنفصل (+15 / -15)
+        if handle_balance_adjustment_command(raw_text, chat_id):
             return "OK", 200
 
         # كود تحويل الرصيد: رقم موبايل + مبلغ
