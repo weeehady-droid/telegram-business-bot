@@ -11,8 +11,9 @@ TOKEN = os.environ["BOT_TOKEN"]
 OWNER_ID = 5260085571
 
 DEBTS_FILE = "debts.json"
-DEFAULT_INTERVAL_DAYS = 1
-REMINDER_CHECK_SECONDS = 600  # يفحص كل 10 دقايق لو في تذكير مستحق
+DEFAULT_INTERVAL_HOURS = 3
+DEFAULT_INTERVAL_DAYS = DEFAULT_INTERVAL_HOURS / 24  # نفس الحقل القديم (interval_days) بس بالساعات
+REMINDER_CHECK_SECONDS = 300  # يفحص كل 5 دقايق لو في تذكير مستحق
 
 replies = {
     "usdt": """<blockquote><b><i>Enter and click on any wallet to be copied <tg-emoji emoji-id="5332668748044204575">👆</tg-emoji></i></b></blockquote>
@@ -72,7 +73,7 @@ def debt_message_egp(amount):
     return (
         f"<blockquote><b><i>⏰ تذكير: عليك {amount} جنيه</i></b></blockquote>\n\n"
         f"<blockquote><b><i>برجاء السداد في أقرب وقت 🙏</i></b></blockquote>\n\n"
-        f"<blockquote><i>ملحوظة: ده بوت تذكير تلقائي، وهيتم إرسال الرسالة دي تلقائيًا كل 24 ساعة لحد ما يتم السداد.</i></blockquote>"
+        f"<blockquote><i>ملحوظة: ده بوت تذكير تلقائي، وهيتم إرسال الرسالة دي تلقائيًا كل 3 ساعات لحد ما يتم السداد.</i></blockquote>"
     )
 
 
@@ -80,7 +81,7 @@ def debt_message_usd(amount):
     return (
         f"<blockquote><b><i>⏰ Reminder: You have a pending payment of {amount}$</i></b></blockquote>\n\n"
         f"<blockquote><b><i>Please settle it as soon as possible 🙏</i></b></blockquote>\n\n"
-        f"<blockquote><i>Note: This is an automated reminder bot, and this message will be sent automatically every 24 hours until payment is settled.</i></blockquote>"
+        f"<blockquote><i>Note: This is an automated reminder bot, and this message will be sent automatically every 3 hours until payment is settled.</i></blockquote>"
     )
 
 
@@ -299,30 +300,37 @@ def handle_debt_commands(text, chat_id, business_connection_id=None):
 
 # ---------- خيط خلفي بيبعت التذكيرات ----------
 
+def check_and_send_reminders():
+    now = time.time()
+    sent = 0
+    with debts_lock:
+        changed = False
+        for chat_key, info in list(debts.items()):
+            egp = info.get("amount_egp", 0)
+            usd = info.get("amount_usd", 0)
+            if egp <= 0 and usd <= 0:
+                continue
+            interval_seconds = info.get("interval_days", DEFAULT_INTERVAL_DAYS) * 86400
+            last = info.get("last_reminder", 0)
+            if now - last >= interval_seconds:
+                try:
+                    if egp > 0:
+                        send(int(chat_key), debt_message_egp(egp), info.get("business_connection_id"), keyboards.get("كاش"))
+                    if usd > 0:
+                        send(int(chat_key), debt_message_usd(usd), info.get("business_connection_id"), keyboards.get("usdt"))
+                    sent += 1
+                except Exception as e:
+                    print("reminder send error:", e)
+                info["last_reminder"] = now
+                changed = True
+        if changed:
+            save_debts()
+    return sent
+
+
 def reminder_loop():
     while True:
-        now = time.time()
-        with debts_lock:
-            changed = False
-            for chat_key, info in list(debts.items()):
-                egp = info.get("amount_egp", 0)
-                usd = info.get("amount_usd", 0)
-                if egp <= 0 and usd <= 0:
-                    continue
-                interval_seconds = info.get("interval_days", DEFAULT_INTERVAL_DAYS) * 86400
-                last = info.get("last_reminder", 0)
-                if now - last >= interval_seconds:
-                    try:
-                        if egp > 0:
-                            send(int(chat_key), debt_message_egp(egp), info.get("business_connection_id"), keyboards.get("كاش"))
-                        if usd > 0:
-                            send(int(chat_key), debt_message_usd(usd), info.get("business_connection_id"), keyboards.get("usdt"))
-                    except Exception as e:
-                        print("reminder send error:", e)
-                    info["last_reminder"] = now
-                    changed = True
-            if changed:
-                save_debts()
+        check_and_send_reminders()
         time.sleep(REMINDER_CHECK_SECONDS)
 
 
@@ -332,6 +340,14 @@ threading.Thread(target=reminder_loop, daemon=True).start()
 @app.route("/")
 def home():
     return "Bot is running!"
+
+
+@app.route("/check-reminders")
+def check_reminders_endpoint():
+    # رابط خارجي: خليه يتضرب كل شوية من خدمة زي cron-job.org
+    # عشان يفضل السيرفر صاحي ويشتغل نظام التذكير حتى لو الخطة المجانية بتنام
+    sent = check_and_send_reminders()
+    return {"ok": True, "reminders_sent": sent}, 200
 
 
 @app.route("/webhook", methods=["POST"])
