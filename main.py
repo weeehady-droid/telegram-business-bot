@@ -130,6 +130,32 @@ NETWORKS = {
 }
 
 
+# ---------- استعلام الرصيد جوه محادثة العميل نفسه ----------
+
+def handle_balance_command(text, chat_id, business_connection_id=None):
+    if text.strip().lower() != "balance":
+        return False
+
+    chat_key = str(chat_id)
+    with debts_lock:
+        info = debts.get(chat_key)
+        egp = info.get("amount_egp", 0) if info else 0
+        usd = info.get("amount_usd", 0) if info else 0
+
+    if egp <= 0 and usd <= 0:
+        message = "<blockquote><b>✅ مفيش أي مبلغ عليك دلوقتي</b></blockquote>"
+    else:
+        parts = []
+        if egp > 0:
+            parts.append(f"<blockquote><b>{egp} جنيه</b></blockquote>")
+        if usd > 0:
+            parts.append(f"<blockquote><b>{usd}$</b></blockquote>")
+        message = "\n\n".join(parts)
+
+    send(chat_id, message, business_connection_id)
+    return True
+
+
 def handle_transfer_code_command(text, chat_id, business_connection_id=None):
     m = re.match(r'^(01\d{9})\s+(\d+(?:\.\d+)?)$', text)
     if not m:
@@ -369,6 +395,10 @@ def webhook():
         if handle_debt_commands(raw_text, chat_id, business_connection_id):
             return "OK", 200
 
+        # استعلام الرصيد
+        if handle_balance_command(raw_text, chat_id, business_connection_id):
+            return "OK", 200
+
         # كود تحويل الرصيد: رقم موبايل + مبلغ
         if handle_transfer_code_command(raw_text, chat_id, business_connection_id):
             return "OK", 200
@@ -403,6 +433,10 @@ def webhook():
                             f"(كل {info.get('interval_days', DEFAULT_INTERVAL_DAYS)} يوم)"
                         )
                     send(chat_id, "\n".join(lines))
+            return "OK", 200
+
+        # استعلام الرصيد
+        if handle_balance_command(raw_text, chat_id):
             return "OK", 200
 
         # كود تحويل الرصيد: رقم موبايل + مبلغ
