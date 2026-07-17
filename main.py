@@ -10,9 +10,8 @@ app = Flask(__name__)
 TOKEN = os.environ["BOT_TOKEN"]
 OWNER_ID = 5260085571
 
-DEBTS_FILE = "debts.json"
-DEFAULT_INTERVAL_HOURS = 3
-DEFAULT_INTERVAL_DAYS = DEFAULT_INTERVAL_HOURS / 24  # نفس الحقل القديم (interval_days) بس بالساعات
+DEFAULT_INTERVAL_MINUTES = 15
+DEFAULT_INTERVAL_DAYS = DEFAULT_INTERVAL_MINUTES / (24 * 60)  # نفس الحقل القديم (interval_days) بس بالدقايق
 REMINDER_CHECK_SECONDS = 300  # يفحص كل 5 دقايق لو في تذكير مستحق
 
 replies = {
@@ -73,7 +72,7 @@ def debt_message_egp(amount):
     return (
         f"<blockquote><b><i>⏰ تذكير: عليك {amount} جنيه</i></b></blockquote>\n\n"
         f"<blockquote><b><i>برجاء السداد في أقرب وقت 🙏</i></b></blockquote>\n\n"
-        f"<blockquote><i>ملحوظة: ده بوت تذكير تلقائي، وهيتم إرسال الرسالة دي تلقائيًا كل 3 ساعات لحد ما يتم السداد.</i></blockquote>"
+        f"<blockquote><i>ملحوظة: ده بوت تذكير تلقائي، وهيتم إرسال الرسالة دي تلقائيًا كل 15 دقيقة لحد ما يتم السداد.</i></blockquote>"
     )
 
 
@@ -81,25 +80,73 @@ def debt_message_usd(amount):
     return (
         f"<blockquote><b><i>⏰ Reminder: You have a pending payment of {amount}$</i></b></blockquote>\n\n"
         f"<blockquote><b><i>Please settle it as soon as possible 🙏</i></b></blockquote>\n\n"
-        f"<blockquote><i>Note: This is an automated reminder bot, and this message will be sent automatically every 3 hours until payment is settled.</i></blockquote>"
+        f"<blockquote><i>Note: This is an automated reminder bot, and this message will be sent automatically every 15 minutes until payment is settled.</i></blockquote>"
     )
+
+
+# ---------- تخزين دائم على Supabase (بدل الملفات المحلية اللي بتتمسح مع كل Deploy) ----------
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+
+SUPABASE_HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json"
+}
+
+
+def supabase_get_all(table):
+    try:
+        r = requests.get(f"{SUPABASE_URL}/rest/v1/{table}?select=*", headers=SUPABASE_HEADERS)
+        if r.status_code == 200:
+            return r.json()
+        print(f"supabase_get_all error [{table}]:", r.text)
+    except Exception as e:
+        print(f"supabase_get_all exception [{table}]:", e)
+    return []
+
+
+def supabase_upsert(table, row):
+    try:
+        headers = dict(SUPABASE_HEADERS)
+        headers["Prefer"] = "resolution=merge-duplicates"
+        r = requests.post(f"{SUPABASE_URL}/rest/v1/{table}", headers=headers, json=row)
+        if r.status_code not in (200, 201, 204):
+            print(f"supabase_upsert error [{table}]:", r.text)
+    except Exception as e:
+        print(f"supabase_upsert exception [{table}]:", e)
+
+
+def supabase_delete(table, chat_key):
+    try:
+        r = requests.delete(f"{SUPABASE_URL}/rest/v1/{table}?chat_key=eq.{chat_key}", headers=SUPABASE_HEADERS)
+        if r.status_code not in (200, 204):
+            print(f"supabase_delete error [{table}]:", r.text)
+    except Exception as e:
+        print(f"supabase_delete exception [{table}]:", e)
 
 
 # ---------- تخزين الديون ----------
 
 def load_debts():
-    if os.path.exists(DEBTS_FILE):
-        try:
-            with open(DEBTS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+    rows = supabase_get_all("debts")
+    result = {}
+    for row in rows:
+        chat_key = row.pop("chat_key")
+        result[chat_key] = row
+    return result
 
 
 def save_debts():
-    with open(DEBTS_FILE, "w", encoding="utf-8") as f:
-        json.dump(debts, f, ensure_ascii=False, indent=2)
+    for chat_key, entry in debts.items():
+        row = dict(entry)
+        row["chat_key"] = chat_key
+        supabase_upsert("debts", row)
+
+
+def delete_debt(chat_key):
+    supabase_delete("debts", chat_key)
 
 
 debts = load_debts()
@@ -108,22 +155,14 @@ debts_lock = threading.Lock()
 
 # ---------- تخزين الرصيد المنفصل (+/-) بعيد تمامًا عن نظام الديون ----------
 
-BALANCES_FILE = "balances.json"
-
-
 def load_balances():
-    if os.path.exists(BALANCES_FILE):
-        try:
-            with open(BALANCES_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+    rows = supabase_get_all("balances")
+    return {row["chat_key"]: row["amount"] for row in rows}
 
 
 def save_balances():
-    with open(BALANCES_FILE, "w", encoding="utf-8") as f:
-        json.dump(balances, f, ensure_ascii=False, indent=2)
+    for chat_key, amount in balances.items():
+        supabase_upsert("balances", {"chat_key": chat_key, "amount": amount})
 
 
 balances = load_balances()
@@ -182,7 +221,7 @@ NETWORKS = {
 # ---------- استعلام الرصيد الجديد (+/-) جوه محادثة العميل نفسه ----------
 
 def handle_balance_command(text, chat_id, business_connection_id=None):
-    if text.strip().lower() != "balance":
+    if text.strip().lower() != "total":
         return False
 
     chat_key = str(chat_id)
@@ -322,7 +361,7 @@ def handle_debt_commands(text, chat_id, business_connection_id=None):
             usd = info.get("amount_usd", 0) if info else 0
             if chat_key in debts:
                 del debts[chat_key]
-                save_debts()
+                delete_debt(chat_key)
 
         parts = []
         if egp > 0:
@@ -342,7 +381,9 @@ def handle_debt_commands(text, chat_id, business_connection_id=None):
                 debts[chat_key]["amount_usd"] = 0
                 if debts[chat_key].get("amount_egp", 0) <= 0:
                     del debts[chat_key]
-                save_debts()
+                    delete_debt(chat_key)
+                else:
+                    save_debts()
 
         send(chat_id, f"<blockquote><b><i>✅ Payment cleared. You had {usd}$ pending</i></b></blockquote>", business_connection_id)
         return True
