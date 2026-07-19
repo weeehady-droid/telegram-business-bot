@@ -10,9 +10,8 @@ app = Flask(__name__)
 TOKEN = os.environ["BOT_TOKEN"]
 OWNER_ID = 5260085571
 
-DEFAULT_INTERVAL_MINUTES = 15
-DEFAULT_INTERVAL_DAYS = DEFAULT_INTERVAL_MINUTES / (24 * 60)  # نفس الحقل القديم (interval_days) بس بالدقايق
-REMINDER_CHECK_SECONDS = 300  # يفحص كل 5 دقايق لو في تذكير مستحق
+DEFAULT_INTERVAL_HOURS = 3
+DEFAULT_INTERVAL_DAYS = DEFAULT_INTERVAL_HOURS / 24  # نفس الحقل القديم (interval_days) بس بالساعات
 
 replies = {
     "usdt": """<blockquote><b><i>Enter and click on any wallet to be copied <tg-emoji emoji-id="5332668748044204575">👆</tg-emoji></i></b></blockquote>
@@ -72,7 +71,7 @@ def debt_message_egp(amount):
     return (
         f"<blockquote><b><i>⏰ تذكير: عليك {amount} جنيه</i></b></blockquote>\n\n"
         f"<blockquote><b><i>برجاء السداد في أقرب وقت 🙏</i></b></blockquote>\n\n"
-        f"<blockquote><i>ملحوظة: ده بوت تذكير تلقائي، وهيتم إرسال الرسالة دي تلقائيًا كل 15 دقيقة لحد ما يتم السداد.</i></blockquote>"
+        f"<blockquote><i>ملحوظة: ده بوت تذكير تلقائي، وهيتم إرسال الرسالة دي تلقائيًا كل 3 ساعات لحد ما يتم السداد.</i></blockquote>"
     )
 
 
@@ -80,7 +79,7 @@ def debt_message_usd(amount):
     return (
         f"<blockquote><b><i>⏰ Reminder: You have a pending payment of {amount}$</i></b></blockquote>\n\n"
         f"<blockquote><b><i>Please settle it as soon as possible 🙏</i></b></blockquote>\n\n"
-        f"<blockquote><i>Note: This is an automated reminder bot, and this message will be sent automatically every 15 minutes until payment is settled.</i></blockquote>"
+        f"<blockquote><i>Note: This is an automated reminder bot, and this message will be sent automatically every 3 hours until payment is settled.</i></blockquote>"
     )
 
 
@@ -406,9 +405,11 @@ def handle_debt_commands(text, chat_id, business_connection_id=None):
 # ---------- خيط خلفي بيبعت التذكيرات ----------
 
 def check_and_send_reminders():
+    global debts
     now = time.time()
     sent = 0
     with debts_lock:
+        debts = load_debts()  # ياخد أحدث نسخة فعلية من Supabase قبل الفحص، عشان مايبعتش تذكير لدين اتمسح فعلاً
         changed = False
         for chat_key, info in list(debts.items()):
             egp = info.get("amount_egp", 0)
@@ -431,15 +432,6 @@ def check_and_send_reminders():
         if changed:
             save_debts()
     return sent
-
-
-def reminder_loop():
-    while True:
-        check_and_send_reminders()
-        time.sleep(REMINDER_CHECK_SECONDS)
-
-
-threading.Thread(target=reminder_loop, daemon=True).start()
 
 
 @app.route("/")
